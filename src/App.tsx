@@ -1,6 +1,7 @@
-import { Activity, LayoutDashboard, Settings } from 'lucide-react'
+import { Activity, LayoutDashboard, PieChart, Settings } from 'lucide-react'
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { DbProvider } from './db/provider'
+import Analytics from './pages/Analytics'
 import VideoAnalysis from './pages/VideoAnalysis'
 
 function Home() {
@@ -54,7 +55,14 @@ function Layout({ children }: { children: React.ReactNode }) {
           </Link>
 
           <nav className="flex items-center gap-6 text-sm font-medium">
-            <Link to="/scout" className="text-muted-foreground hover:text-foreground transition-colors">Scout / Vídeo</Link>
+            <Link to="/scout" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <LayoutDashboard className="w-4 h-4" />
+              Scout / Vídeo
+            </Link>
+            <Link to="/analytics" className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <PieChart className="w-4 h-4" />
+              Analytics
+            </Link>
             <button className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-muted">
               <Settings className="w-5 h-5" />
             </button>
@@ -78,6 +86,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/scout" element={<VideoAnalysis />} />
+            <Route path="/analytics" element={<Analytics />} />
           </Routes>
         </Layout>
       </BrowserRouter>

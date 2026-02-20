@@ -22,10 +22,12 @@ export default function VideoAnalysis() {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [corners, setCorners] = useState<Point[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Timeline State
   const [events, setEvents] = useState<GameEventType[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processStatus, setProcessStatus] = useState({ message: '', progress: 0 });
 
   const handleLoad = () => {
     setUrl(inputUrl);
@@ -64,18 +66,55 @@ export default function VideoAnalysis() {
 
   const generateMockEvents = () => {
     setIsProcessing(true);
-    setTimeout(() => {
-      const mockData: GameEventType[] = [
-        { id: "1", timeSeconds: 45, actionType: "serve", reviewStatus: "pending", aiConfidence: 0.95 },
-        { id: "2", timeSeconds: 48, actionType: "reception", reviewStatus: "pending", aiConfidence: 0.88 },
-        { id: "3", timeSeconds: 49, actionType: "set", reviewStatus: "pending", aiConfidence: 0.92 },
-        { id: "4", timeSeconds: 51, actionType: "attack", reviewStatus: "pending", aiConfidence: 0.89 },
-        { id: "5", timeSeconds: 120, actionType: "serve", reviewStatus: "pending", aiConfidence: 0.97 },
-        { id: "6", timeSeconds: 125, actionType: "attack", reviewStatus: "pending", aiConfidence: 0.75 },
-      ];
-      setEvents(mockData);
+    setProcessStatus({ message: 'Iniciando pipeline...', progress: 0 });
+
+    const internalPlayer = playerRef.current?.getInternalPlayer();
+
+    // Check if it's a native video element
+    if (internalPlayer && !(internalPlayer instanceof HTMLVideoElement)) {
+      alert("A Análise só funciona com arquivos locais ou URLs de vídeo nativas (.mp4). Vídeos do YouTube bloqueiam a leitura de pixels (CORS).");
       setIsProcessing(false);
-    }, 1500); // UI feel
+      return;
+    }
+
+    const videoElement = internalPlayer as HTMLVideoElement;
+
+    const worker = new Worker(new URL('../workers/cv.worker.ts', import.meta.url), {
+      type: 'module'
+    });
+
+    worker.onmessage = (e) => {
+      const { type, message, progress, events: finalEvents } = e.data;
+      if (type === 'STATUS_UPDATE') {
+        setProcessStatus({ message, progress });
+      } else if (type === 'ANALYSIS_COMPLETE') {
+        setEvents(finalEvents);
+        setIsProcessing(false);
+        setProcessStatus({ message: '', progress: 0 });
+        worker.terminate();
+      }
+    };
+
+    worker.postMessage({
+      type: 'START_ANALYSIS',
+      payload: { videoUrl: url, corners }
+    });
+
+    // Extract a frame for the worker as a proof of concept
+    if (videoElement && canvasRef.current) {
+      const canvas = canvasRef.current;
+      canvas.width = videoElement.videoWidth || 640;
+      canvas.height = videoElement.videoHeight || 360;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        worker.postMessage({
+          type: 'PROCESS_FRAME',
+          payload: { imageData },
+        }, [imageData.data.buffer]);
+      }
+    }
   };
 
   const updateEvent = (id: string, updates: Partial<GameEventType>) => {
@@ -138,7 +177,10 @@ export default function VideoAnalysis() {
                     onPause={() => setIsPlaying(false)}
                     onProgress={(state: any) => setCurrentTime(state.playedSeconds)}
                     config={{ youtube: { playerVars: { showinfo: 1 } as any } as any }}
+                    crossOrigin="anonymous"
                   />
+                  {/* Invisible Canvas for Frame Extraction */}
+                  <canvas ref={canvasRef} className="hidden" />
 
                   {/* SVG Calibration Overlay */}
                   {isCalibrating && (
@@ -240,6 +282,21 @@ export default function VideoAnalysis() {
                             Concluir
                           </button>
                         )}
+                      </div>
+                    </div>
+                  )}
+
+                  {isProcessing && (
+                    <div className="mt-4 p-3 bg-muted rounded-lg flex flex-col gap-2 border border-border/50 animate-in fade-in slide-in-from-top-2">
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-xs font-medium text-muted-foreground">{processStatus.message}</span>
+                        <span className="text-xs font-bold text-primary">{processStatus.progress}%</span>
+                      </div>
+                      <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300 ease-out"
+                          style={{ width: `${processStatus.progress}%` }}
+                        />
                       </div>
                     </div>
                   )}
