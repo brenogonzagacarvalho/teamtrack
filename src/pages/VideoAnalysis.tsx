@@ -59,7 +59,8 @@ export default function VideoAnalysis() {
 
   const handleSeek = (seconds: number) => {
     if (playerRef.current) {
-      playerRef.current.seekTo(seconds, 'seconds');
+      const newTime = Math.max(0, seconds); // Prevent negative seeking
+      playerRef.current.seekTo(newTime, 'seconds');
       setIsPlaying(true);
     }
   };
@@ -162,7 +163,7 @@ export default function VideoAnalysis() {
             <div
               ref={containerRef}
               onClick={handleVideoClick}
-              className={`bg-black rounded-xl overflow-hidden aspect-video border relative shadow-sm ${isCalibrating ? 'cursor-crosshair ring-2 ring-primary' : ''}`}
+              className={`bg-black rounded-xl overflow-hidden aspect-video border relative shadow-sm group ${isCalibrating ? 'cursor-crosshair ring-2 ring-primary' : ''}`}
             >
               {url ? (
                 <>
@@ -177,18 +178,16 @@ export default function VideoAnalysis() {
                     onPause={() => setIsPlaying(false)}
                     onProgress={(state: any) => setCurrentTime(state.playedSeconds)}
                     config={{ youtube: { playerVars: { showinfo: 1 } as any } as any }}
-                    crossOrigin="anonymous"
                   />
                   {/* Invisible Canvas for Frame Extraction */}
                   <canvas ref={canvasRef} className="hidden" />
-
                   {/* SVG Calibration Overlay */}
                   {isCalibrating && (
                     <svg className="absolute inset-0 w-full h-full pointer-events-none z-10 font-mono">
                       {/* Draw polygon if 4 points exist */}
                       {corners.length === 4 && (
                         <polygon
-                          points={corners.map(c => `${c.x}%,${c.y}%`).join(' ')}
+                          points={corners.map(c => `${c.x.toFixed(2)}%,${c.y.toFixed(2)}%`).join(' ')}
                           fill="rgba(59, 130, 246, 0.2)"
                           stroke="rgb(59, 130, 246)"
                           strokeWidth="2"
@@ -205,6 +204,36 @@ export default function VideoAnalysis() {
                         </g>
                       ))}
                     </svg>
+                  )}
+
+                  {/* Video Navigation Controls Overlay */}
+                  {!isCalibrating && url && (
+                    <div className="absolute bottom-4 left-4 right-4 flex justify-between z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {/* Left: Scoreboard Mock */}
+                      <div className="bg-black/80 text-white px-4 py-2 rounded-lg flex gap-4 items-center text-sm font-bold shadow-lg backdrop-blur-md border border-white/20">
+                        <span className="text-blue-400">BRA <span className="text-white text-lg mx-1">24</span></span>
+                        <span className="text-white/30 text-xs">x</span>
+                        <span className="text-orange-400"><span className="text-white text-lg mx-1">22</span> ITA</span>
+                      </div>
+
+                      {/* Right: Skip Controls */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSeek(currentTime - 1); }}
+                          className="bg-black/80 hover:bg-primary text-white border border-white/20 hover:border-primary px-3 py-1.5 rounded-md text-xs font-bold font-mono shadow-lg backdrop-blur-md transition-all active:scale-95"
+                          title="Voltar 1 Segundo"
+                        >
+                          -1s
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleSeek(currentTime + 1); }}
+                          className="bg-black/80 hover:bg-primary text-white border border-white/20 hover:border-primary px-3 py-1.5 rounded-md text-xs font-bold font-mono shadow-lg backdrop-blur-md transition-all active:scale-95"
+                          title="Avançar 1 Segundo"
+                        >
+                          +1s
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </>
               ) : (
@@ -317,7 +346,6 @@ export default function VideoAnalysis() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

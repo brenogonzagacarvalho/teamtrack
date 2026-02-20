@@ -168,19 +168,23 @@ export function EventTimeline({ events, currentTime, onSeekTo, onConfirmEvent, o
                       value={event.playerId || ''}
                       onChange={(e) => onEditEvent(event.id, { playerId: e.target.value })}
                     />
-                    <select
-                      className="text-xs px-2 py-1 rounded border bg-background"
-                      value={event.evaluation || ''}
-                      onChange={(e) => onEditEvent(event.id, { evaluation: e.target.value as any })}
-                    >
-                      <option value="">Nota (Scout)</option>
-                      <option value="#"># (Perfect)</option>
-                      <option value="+">+ (Good)</option>
-                      <option value="!">! (OK)</option>
-                      <option value="-">- (Poor)</option>
-                      <option value="=">= (Error)</option>
-                      <option value="/">/ (Overpass)</option>
-                    </select>
+                    <div className="flex gap-1 ml-1">
+                      {(['#', '+', '!', '-', '=', '/'] as const).map((evalType) => (
+                        <button
+                          key={evalType}
+                          onClick={() => onEditEvent(event.id, { evaluation: evalType })}
+                          className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold transition-colors ${event.evaluation === evalType
+                              ? evalType === '#' || evalType === '+' ? 'bg-green-600 text-white'
+                                : evalType === '-' || evalType === '=' ? 'bg-red-600 text-white'
+                                  : 'bg-yellow-500 text-white'
+                              : 'bg-muted text-muted-foreground hover:bg-secondary'
+                            }`}
+                          title={`Avaliar com ${evalType}`}
+                        >
+                          {evalType}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
