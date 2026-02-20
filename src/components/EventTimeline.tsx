@@ -1,4 +1,5 @@
 import { Check, Edit2, PlayCircle, Trash2 } from "lucide-react";
+import { useEffect } from "react";
 
 export type GameEventType = {
   id: string;
@@ -16,9 +17,10 @@ interface EventTimelineProps {
   onSeekTo: (seconds: number) => void;
   onConfirmEvent: (id: string) => void;
   onEditEvent: (id: string, updates: Partial<GameEventType>) => void;
+  onDeleteEvent?: (id: string) => void;
 }
 
-export function EventTimeline({ events, currentTime, onSeekTo, onConfirmEvent, onEditEvent }: EventTimelineProps) {
+export function EventTimeline({ events, currentTime, onSeekTo, onConfirmEvent, onEditEvent, onDeleteEvent }: EventTimelineProps) {
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -39,10 +41,51 @@ export function EventTimeline({ events, currentTime, onSeekTo, onConfirmEvent, o
     return colors[action] || "bg-gray-100 text-gray-800";
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'SELECT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === 'Delete' || e.key === 'Backspace') {
+        const pendingEvents = events.filter(ev => ev.reviewStatus === 'pending');
+        if (pendingEvents.length === 0) return;
+
+        let closestEvent = pendingEvents[0];
+        let minDiff = Math.abs(currentTime - closestEvent.timeSeconds);
+
+        for (let i = 1; i < pendingEvents.length; i++) {
+          const diff = Math.abs(currentTime - pendingEvents[i].timeSeconds);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closestEvent = pendingEvents[i];
+          }
+        }
+
+        // Apply if near the current video time (e.g. within 5 seconds)
+        if (minDiff < 5) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            onConfirmEvent(closestEvent.id);
+          } else if ((e.key === 'Delete' || e.key === 'Backspace') && onDeleteEvent) {
+            e.preventDefault();
+            onDeleteEvent(closestEvent.id);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [events, currentTime, onConfirmEvent, onDeleteEvent]);
+
   return (
     <div className="flex flex-col h-full bg-card rounded-xl border shadow-sm">
-      <div className="p-4 border-b flex justify-between items-center">
-        <h3 className="font-semibold text-lg">Timeline de Ações</h3>
+      <div className="p-4 border-b flex justify-between items-center bg-card rounded-t-xl">
+        <div>
+          <h3 className="font-semibold text-lg hover:text-primary transition-colors">Timeline de Ações</h3>
+          <p className="text-[10px] text-muted-foreground mt-0.5 font-medium">Atalhos: [Enter] Confirma / [Del] Exclui (prox. de {formatTime(currentTime)})</p>
+        </div>
         <span className="text-xs font-medium px-2 py-1 bg-muted rounded-full text-muted-foreground">
           {events.filter(e => e.reviewStatus === 'pending').length} pendentes
         </span>
@@ -106,7 +149,11 @@ export function EventTimeline({ events, currentTime, onSeekTo, onConfirmEvent, o
                       <button className="p-1.5 text-slate-400 hover:text-primary hover:bg-slate-50 rounded">
                         <Edit2 className="w-4 h-4" />
                       </button>
-                      <button className="p-1.5 text-slate-400 hover:text-destructive hover:bg-red-50 rounded">
+                      <button
+                        onClick={() => onDeleteEvent && onDeleteEvent(event.id)}
+                        className="p-1.5 text-slate-400 hover:text-destructive hover:bg-red-50 rounded"
+                        title="Excluir Evento"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

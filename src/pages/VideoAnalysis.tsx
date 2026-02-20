@@ -86,12 +86,16 @@ export default function VideoAnalysis() {
     updateEvent(id, { reviewStatus: "confirmed" });
   };
 
+  const deleteEvent = (id: string) => {
+    setEvents(events.filter(ev => ev.id !== id));
+  };
+
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col p-6">
-      <div className="max-w-6xl mx-auto w-full space-y-6">
-        <header>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">Video Analysis Setup</h1>
-          <p className="text-muted-foreground">Colar a URL do vídeo de fundo de quadra e calibrar.</p>
+    <div className="flex-1 bg-background text-foreground flex flex-col p-6 border-t border-border/40">
+      <div className="max-w-7xl mx-auto w-full space-y-6">
+        <header className="mb-8">
+          <h1 className="text-4xl font-extrabold tracking-tight text-foreground mb-1">Painel de <span className="text-primary">Vídeo</span></h1>
+          <p className="text-muted-foreground text-lg">Carregue a partida para iniciar a calibração de quadra e o scout.</p>
         </header>
 
         {/* Input Control */}
@@ -105,17 +109,17 @@ export default function VideoAnalysis() {
           />
           <button
             onClick={handleLoad}
-            className="px-6 py-2 bg-primary text-primary-foreground font-semibold rounded-md hover:bg-primary/90 transition-colors shadow-sm"
+            className="px-6 py-2 bg-primary text-primary-foreground font-semibold rounded-md hover:bg-primary/90 transition-all shadow-md active:scale-95"
           >
             Carregar Vídeo
           </button>
         </div>
 
         {/* Dashboard Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
 
           {/* Main Video Area */}
-          <div className="lg:col-span-3">
+          <div className="xl:col-span-3">
             <div
               ref={containerRef}
               onClick={handleVideoClick}
@@ -251,6 +255,7 @@ export default function VideoAnalysis() {
                 onSeekTo={handleSeek}
                 onConfirmEvent={confirmEvent}
                 onEditEvent={updateEvent}
+                onDeleteEvent={deleteEvent}
               />
             </div>
           </div>
